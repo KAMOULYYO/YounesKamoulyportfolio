@@ -4,6 +4,7 @@ import { STORAGE_KEYS, readJSON, writeJSON } from '../utils/storage';
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
 const EXPERIENCE_EMOJIS = ['💼', '🧑‍💻', '🛒', '🗂️', '🚀', '📈', '🤝'];
+const REQUIRED_PUBLIC_SECTION_IDS = ['hero', 'projects', 'contact'];
 
 const sortSections = (sections) => [...sections].sort((a, b) => a.order - b.order);
 
@@ -34,7 +35,18 @@ const normalizeSection = (section, index) => {
 const normalizeConfig = (config) => {
   const base = config && typeof config === 'object' ? config : {};
   const sectionsRaw = Array.isArray(base.sections) ? base.sections : initialSiteConfig.sections;
-  const sections = sectionsRaw.map((section, index) => normalizeSection(section, index));
+  const normalized = sectionsRaw.map((section, index) => normalizeSection(section, index));
+  const existingIds = new Set(normalized.map((section) => section.id));
+  const missingRequired = REQUIRED_PUBLIC_SECTION_IDS
+    .filter((id) => !existingIds.has(id))
+    .map((id) => initialSiteConfig.sections.find((section) => section.id === id))
+    .filter(Boolean)
+    .map((section) => clone(section));
+
+  const sections = [...normalized, ...missingRequired].map((section, index) => ({
+    ...section,
+    order: Number.isFinite(section.order) ? section.order : index,
+  }));
 
   return {
     ...initialSiteConfig,
