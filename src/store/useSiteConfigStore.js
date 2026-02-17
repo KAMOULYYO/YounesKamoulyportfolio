@@ -155,14 +155,14 @@ export const useSiteConfigStore = create((set, get) => ({
     writeJSON(STORAGE_KEYS.siteConfig, config);
     writeJSON(STORAGE_KEYS.siteSavedConfig, savedConfig);
     writeJSON(STORAGE_KEYS.siteHistory, history);
+    if (get().cloud.enabled) {
+      saveCloudSiteConfig(config).catch(() => {});
+    }
   },
 
   setConfig: (nextConfig) => {
     set({ config: { ...nextConfig, sections: sortSections(nextConfig.sections || []) } });
     get().persistAll();
-    if (get().cloud.enabled) {
-      saveCloudSiteConfig(nextConfig).catch(() => {});
-    }
   },
 
   hydrateFromCloud: async () => {
