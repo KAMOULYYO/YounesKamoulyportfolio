@@ -17,6 +17,7 @@ export default function AdminDashboard() {
   const [editingSection, setEditingSection] = useState(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [analytics, setAnalytics] = useState({ cvClicks: 0, projectClicks: 0, contactSubmits: 0 });
+  const [syncingCloud, setSyncingCloud] = useState(false);
 
   const {
     config,
@@ -34,6 +35,8 @@ export default function AdminDashboard() {
     publishConfig,
     restoreVersion,
     setConfig,
+    cloud,
+    syncCloudNow,
   } = useSiteConfigStore();
 
   useEffect(() => {
@@ -122,6 +125,33 @@ export default function AdminDashboard() {
                   <Rocket size={14} /> Publish
                 </button>
               </div>
+            </div>
+            <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+              <span className={`rounded-full px-2 py-1 ${cloud.enabled ? 'bg-emerald-900/40 text-emerald-300' : 'bg-zinc-800 text-zinc-300'}`}>
+                Cloud {cloud.enabled ? 'ON' : 'OFF'}
+              </span>
+              {cloud.lastSyncAt && (
+                <span className="rounded-full border border-zinc-700 px-2 py-1 text-zinc-400">
+                  Last sync: {new Date(cloud.lastSyncAt).toLocaleTimeString()}
+                </span>
+              )}
+              {cloud.error && (
+                <span className="rounded-full border border-red-800/60 px-2 py-1 text-red-300">
+                  {cloud.error}
+                </span>
+              )}
+              <button
+                type="button"
+                disabled={!cloud.enabled || syncingCloud}
+                onClick={async () => {
+                  setSyncingCloud(true);
+                  await syncCloudNow();
+                  setSyncingCloud(false);
+                }}
+                className="rounded-lg border border-zinc-700 px-2 py-1 text-zinc-300 hover:border-brand-red disabled:opacity-40"
+              >
+                {syncingCloud ? 'Syncing...' : 'Sync cloud now'}
+              </button>
             </div>
           </section>
 

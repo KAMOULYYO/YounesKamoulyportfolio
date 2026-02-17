@@ -148,6 +148,7 @@ export const useSiteConfigStore = create((set, get) => ({
     enabled: isCloudConfigEnabled(),
     hydrated: false,
     error: '',
+    lastSyncAt: '',
   },
 
   persistAll: () => {
@@ -155,9 +156,7 @@ export const useSiteConfigStore = create((set, get) => ({
     writeJSON(STORAGE_KEYS.siteConfig, config);
     writeJSON(STORAGE_KEYS.siteSavedConfig, savedConfig);
     writeJSON(STORAGE_KEYS.siteHistory, history);
-    if (get().cloud.enabled) {
-      saveCloudSiteConfig(config).catch(() => {});
-    }
+    if (get().cloud.enabled) get().syncCloudNow();
   },
 
   setConfig: (nextConfig) => {
@@ -179,9 +178,23 @@ export const useSiteConfigStore = create((set, get) => ({
     set((state) => ({
       config: { ...normalized, sections: sortSections(normalized.sections || []) },
       savedConfig: { ...normalized, sections: sortSections(normalized.sections || []) },
-      cloud: { ...state.cloud, hydrated: true, error: '' },
+      cloud: { ...state.cloud, hydrated: true, error: '', lastSyncAt: new Date().toISOString() },
     }));
     get().persistAll();
+  },
+
+  syncCloudNow: async () => {
+    const { cloud, config } = get();
+    if (!cloud.enabled) return { ok: false, error: 'Cloud disabled' };
+    const result = await saveCloudSiteConfig(config);
+    if (!result.ok) {
+      set((state) => ({ cloud: { ...state.cloud, error: result.error || 'Cloud sync failed.' } }));
+      return result;
+    }
+    set((state) => ({
+      cloud: { ...state.cloud, error: '', lastSyncAt: new Date().toISOString() },
+    }));
+    return result;
   },
 
   toggleSection: (sectionId) => {
