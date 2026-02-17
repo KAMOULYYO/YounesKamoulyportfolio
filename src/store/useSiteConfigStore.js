@@ -59,20 +59,50 @@ const normalizeConfig = (config) => {
 const migrateConfig = (config) => {
   if (!config || !Array.isArray(config.sections)) return config;
 
+  const defaultProjects =
+    initialSiteConfig.sections.find((section) => section.id === 'projects')?.data?.items || [];
+  const defaultsByTitle = new Map(defaultProjects.map((item) => [item.title, item]));
+
   return {
     ...config,
     sections: config.sections.map((section) => {
-      if (section.id !== 'hero') return section;
+      if (section.id === 'hero') {
+        const defaultHero = initialSiteConfig.sections.find((item) => item.id === 'hero');
+        const defaultImage = defaultHero?.data?.image;
+        const currentImage = section.data?.image;
+        const isLegacyUnsplash =
+          typeof currentImage === 'string' &&
+          currentImage.includes('images.unsplash.com/photo-1552664730-d307ca884978');
 
-      const defaultHero = initialSiteConfig.sections.find((item) => item.id === 'hero');
-      const defaultImage = defaultHero?.data?.image;
-      const currentImage = section.data?.image;
-      const isLegacyUnsplash =
-        typeof currentImage === 'string' && currentImage.includes('images.unsplash.com/photo-1552664730-d307ca884978');
+        if (!defaultImage) return section;
+        if (!currentImage || isLegacyUnsplash) {
+          return { ...section, data: { ...section.data, image: defaultImage } };
+        }
+        return section;
+      }
 
-      if (!defaultImage) return section;
-      if (!currentImage || isLegacyUnsplash) {
-        return { ...section, data: { ...section.data, image: defaultImage } };
+      if (section.id === 'projects' && Array.isArray(section.data?.items)) {
+        return {
+          ...section,
+          data: {
+            ...section.data,
+            items: section.data.items.map((project) => {
+              const defaults = defaultsByTitle.get(project?.title);
+              if (!defaults) return project;
+
+              const needsLiveFix = !project.live || project.live === '#';
+              const needsGithubFix = !project.github || project.github === '#';
+
+              if (!needsLiveFix && !needsGithubFix) return project;
+
+              return {
+                ...project,
+                live: needsLiveFix ? defaults.live : project.live,
+                github: needsGithubFix ? defaults.github : project.github,
+              };
+            }),
+          },
+        };
       }
 
       return section;
