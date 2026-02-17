@@ -1,6 +1,7 @@
 ﻿import { create } from 'zustand';
 import { initialSiteConfig, createCustomSection } from '../data/siteConfig';
 import { STORAGE_KEYS, readJSON, writeJSON } from '../utils/storage';
+import { getCloudSiteConfig, isCloudConfigEnabled, saveCloudSiteConfig } from '../utils/cloudConfigApi';
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
 const EXPERIENCE_EMOJIS = ['💼', '🧑‍💻', '🛒', '🗂️', '🚀', '📈', '🤝'];
@@ -143,6 +144,11 @@ const loadInitialState = () => {
 
 export const useSiteConfigStore = create((set, get) => ({
   ...loadInitialState(),
+  cloud: {
+    enabled: isCloudConfigEnabled(),
+    hydrated: false,
+    error: '',
+  },
 
   persistAll: () => {
     const { config, savedConfig, history } = get();
@@ -153,6 +159,28 @@ export const useSiteConfigStore = create((set, get) => ({
 
   setConfig: (nextConfig) => {
     set({ config: { ...nextConfig, sections: sortSections(nextConfig.sections || []) } });
+    get().persistAll();
+    if (get().cloud.enabled) {
+      saveCloudSiteConfig(nextConfig).catch(() => {});
+    }
+  },
+
+  hydrateFromCloud: async () => {
+    const { cloud } = get();
+    if (!cloud.enabled || cloud.hydrated) return;
+
+    const result = await getCloudSiteConfig();
+    if (!result.ok) {
+      set((state) => ({ cloud: { ...state.cloud, hydrated: true, error: result.error || '' } }));
+      return;
+    }
+
+    const normalized = normalizeConfig(migrateConfig(result.data));
+    set((state) => ({
+      config: { ...normalized, sections: sortSections(normalized.sections || []) },
+      savedConfig: { ...normalized, sections: sortSections(normalized.sections || []) },
+      cloud: { ...state.cloud, hydrated: true, error: '' },
+    }));
     get().persistAll();
   },
 
@@ -314,3 +342,4 @@ export const useSiteConfigStore = create((set, get) => ({
     get().persistAll();
   },
 }));
+

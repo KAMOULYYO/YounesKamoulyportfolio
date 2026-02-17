@@ -16,6 +16,7 @@ export default function Home() {
     return saved === 'en' ? 'en' : 'fr';
   });
   const config = useSiteConfigStore((state) => state.config);
+  const hydrateFromCloud = useSiteConfigStore((state) => state.hydrateFromCloud);
   const localizedConfig = useMemo(() => localizeConfig(config, language), [config, language]);
 
   const ordered = useMemo(
@@ -28,6 +29,10 @@ export default function Home() {
     (section) => section.enabled || alwaysVisible.has(section.id)
   );
   const t = uiText[language] || uiText.fr;
+
+  useEffect(() => {
+    hydrateFromCloud();
+  }, [hydrateFromCloud]);
 
   useEffect(() => {
     applySeo(localizedConfig, language);
