@@ -81,12 +81,24 @@ const migrateConfig = (config) => {
         return section;
       }
 
-      if (section.id === 'projects' && Array.isArray(section.data?.items)) {
+      if (section.id === 'projects') {
+        const currentItems = Array.isArray(section.data?.items) ? section.data.items : [];
+
+        if (currentItems.length === 0 && defaultProjects.length > 0) {
+          return {
+            ...section,
+            data: {
+              ...section.data,
+              items: clone(defaultProjects),
+            },
+          };
+        }
+
         return {
           ...section,
           data: {
             ...section.data,
-            items: section.data.items.map((project) => {
+            items: currentItems.map((project) => {
               const defaults = defaultsByTitle.get(project?.title);
               if (!defaults) return project;
 
